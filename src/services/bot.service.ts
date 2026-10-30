@@ -7,18 +7,33 @@ import { commandRegistry } from '../commands/registry';
 
 export class BotService {
   /**
-   * Send Messenger typing indicator ("typing_on") to give instant visual feedback
-   * POST /me/messages { recipient: { id }, sender_action: 'typing_on' }
+   * Mark message as seen ("mark_seen")
+   * POST /me/messages { recipient: { id }, sender_action: 'mark_seen' }
    */
-  async sendTypingIndicator(recipientId: string): Promise<void> {
+  async markSeen(recipientId: string): Promise<void> {
     try {
       await graphApiService.post('/me/messages', {
         recipient: { id: recipientId },
-        sender_action: 'typing_on'
+        sender_action: 'mark_seen'
+      });
+    } catch (err: any) {
+      logger.debug(`Mark seen skipped for ${recipientId}: ${err?.message}`);
+    }
+  }
+
+  /**
+   * Send Messenger typing indicator ("typing_on" | "typing_off")
+   * POST /me/messages { recipient: { id }, sender_action: 'typing_on' }
+   */
+  async sendTypingIndicator(recipientId: string, action: 'typing_on' | 'typing_off' = 'typing_on'): Promise<void> {
+    try {
+      await graphApiService.post('/me/messages', {
+        recipient: { id: recipientId },
+        sender_action: action
       });
     } catch (err: any) {
       // Non-blocking: fail quietly if typing indicator cannot be delivered
-      logger.debug(`Typing indicator skipped for ${recipientId}: ${err?.message}`);
+      logger.debug(`Typing indicator (${action}) skipped for ${recipientId}: ${err?.message}`);
     }
   }
 
@@ -79,27 +94,37 @@ export class BotService {
 
     logger.info(`Received Messenger text from ${senderPsid}: "${messageText}"`);
 
-    // Instant feedback: trigger typing bubbles in Messenger immediately
-    void this.sendTypingIndicator(senderPsid);
+    // Instant response indicators: mark seen & display typing bubbles immediately
+    void this.markSeen(senderPsid);
+    void this.sendTypingIndicator(senderPsid, 'typing_on');
 
-    // 1. Check if input matches any registered command (e.g. /help, /info, /nimji, /post)
-    const commandReply = await commandRegistry.findAndExecute(senderPsid, messageText);
-    if (commandReply) {
-      await this.sendLongMessage(senderPsid, commandReply);
-      return;
+    // Keep typing indicator alive every 4s while processing
+    const typingTimer = setInterval(() => {
+      void this.sendTypingIndicator(senderPsid, 'typing_on');
+    }, 4000);
+
+    try {
+      // 1. Check if input matches any registered command (e.g. /help, /info, /nimji, /post)
+      const commandReply = await commandRegistry.findAndExecute(senderPsid, messageText);
+      if (commandReply) {
+        await this.sendLongMessage(senderPsid, commandReply);
+        return;
+      }
+
+      // 2. If no command matched, automatically route through Nimji AI if configured
+      if (nimjiService.isConfigured()) {
+        logger.info(`Routing freeform message from ${senderPsid} to Nimji AI`);
+        const aiReply = await nimjiService.ask(senderPsid, messageText);
+        await this.sendLongMessage(senderPsid, aiReply);
+        return;
+      }
+
+      // 3. Fallback response if AI is not configured
+      const defaultReply = `Hello! Thanks for reaching out to Lumina.\n\nType "help" to view available commands or chat with our AI assistant Nimji by asking any question!`;
+      await this.sendMessage(senderPsid, defaultReply);
+    } finally {
+      clearInterval(typingTimer);
     }
-
-    // 2. If no command matched, automatically route through Nimji AI if configured
-    if (nimjiService.isConfigured()) {
-      logger.info(`Routing freeform message from ${senderPsid} to Nimji AI`);
-      const aiReply = await nimjiService.ask(senderPsid, messageText);
-      await this.sendLongMessage(senderPsid, aiReply);
-      return;
-    }
-
-    // 3. Fallback response if AI is not configured
-    const defaultReply = `Hello! Thanks for reaching out. Type "help" to view available commands or "nimji <question>" to chat with our AI assistant.`;
-    await this.sendMessage(senderPsid, defaultReply);
   }
 
   /**

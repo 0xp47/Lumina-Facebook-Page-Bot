@@ -156,9 +156,11 @@ export function createClient(
       const chunks = parseStreamChunks(raw);
       const extracted = extractResponse(chunks, raw);
 
-      // Upgrade gg-dl redirect tokens → rd-gg stable paths before download attempts
-      const upgradedUrls = await upgradeGgDlUrlsFromRedirects(requestConfig, extracted.imageUrls);
-      const resolvedImageUrls = sortStableGoogleImageUrls(upgradedUrls);
+      // Only resolve image redirect chains when images are explicitly requested
+      const resolvedImageUrls =
+        (includeImages || saveImages) && extracted.imageUrls.length > 0
+          ? sortStableGoogleImageUrls(await upgradeGgDlUrlsFromRedirects(requestConfig, extracted.imageUrls))
+          : [];
 
       if (extracted.conversation.conversationId) {
         conversation = {
@@ -198,8 +200,6 @@ export function createClient(
       });
     } catch (err) {
       return fail(err instanceof Error ? err : new Error(String(err)));
-    } finally {
-      await client.close();
     }
   }
 

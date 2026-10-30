@@ -21,6 +21,7 @@ export interface AppConfig {
     atToken: string;
     fSid: string;
     blParam: string;
+    geminiApiKey: string;
   };
 }
 
@@ -43,6 +44,7 @@ export const env: AppConfig = {
     cookies: process.env.COOKIES || '',
     atToken: process.env.AT_TOKEN || '',
     fSid: process.env.F_SID || '',
-    blParam: process.env.BL_PARAM || 'boq_assistant-bard-web-server_20260427.06_p7'
+    blParam: process.env.BL_PARAM || 'boq_assistant-bard-web-server_20260427.06_p7',
+    geminiApiKey: process.env.GEMINI_API_KEY || ''
   }
 };
