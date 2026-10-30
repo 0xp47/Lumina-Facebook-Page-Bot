@@ -1,3 +1,8 @@
+export interface CommandResult {
+  text: string;
+  images?: string[];
+}
+
 export interface BotCommand {
   /** Command keyword trigger (e.g. 'help', 'info', 'support') */
   name: string;
@@ -6,5 +11,5 @@ export interface BotCommand {
   /** Optional aliases/triggers (e.g. ['?', 'commands']) */
   aliases?: string[];
   /** Execution method returning the reply string or message payload */
-  execute(senderPsid: string, text: string): Promise<string>;
+  execute(senderPsid: string, text: string): Promise<string | CommandResult>;
 }

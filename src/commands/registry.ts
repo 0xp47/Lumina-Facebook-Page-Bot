@@ -1,10 +1,12 @@
-import { BotCommand } from './command.interface';
+import { BotCommand, CommandResult } from './command.interface';
 import { helpCommand } from './help';
 import { infoCommand } from './info';
 import { hoursCommand } from './hours';
 import { supportCommand } from './support';
 import { postCommand } from './post';
 import { nimjiCommand } from './nimji';
+import { drawCommand } from './draw';
+import { searchCommand } from './search';
 import { logger } from '../utils/logger';
 
 export class CommandRegistry {
@@ -18,6 +20,8 @@ export class CommandRegistry {
     this.register(supportCommand);
     this.register(postCommand);
     this.register(nimjiCommand);
+    this.register(drawCommand);
+    this.register(searchCommand);
   }
 
   /**
@@ -36,7 +40,10 @@ export class CommandRegistry {
   /**
    * Match user text against registered commands and execute
    */
-  public async findAndExecute(senderPsid: string, text: string): Promise<string | null> {
+  public async findAndExecute(
+    senderPsid: string,
+    text: string
+  ): Promise<string | CommandResult | null> {
     const cleanText = text.trim().toLowerCase();
     const words = cleanText.split(/\s+/);
     const firstWord = words[0].replace(/^\//, ''); // Remove leading slash if user typed /help

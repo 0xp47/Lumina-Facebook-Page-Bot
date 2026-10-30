@@ -45,7 +45,11 @@ export class WebhookService {
 
             // Ignore echo messages sent by the Page to prevent infinite reply loops
             if (messagingEvent.message && !messagingEvent.message.is_echo) {
-              await botService.handleIncomingMessage(senderPsid, messagingEvent.message.text);
+              await botService.handleIncomingMessage(
+                senderPsid,
+                messagingEvent.message.text,
+                messagingEvent.message.attachments
+              );
             }
 
             // Handle postback events (e.g. Get Started button or Persistent Menu taps)

@@ -1,9 +1,12 @@
+import fs from 'fs';
+import path from 'path';
 import { graphApiService } from './graphApi.service';
 import { SendMessagePayload, SendMessageResponse } from '../types/facebook.types';
 import { pageService } from './page.service';
 import { nimjiService } from './nimji.service';
 import { logger } from '../utils/logger';
 import { commandRegistry } from '../commands/registry';
+import { env } from '../config/env.config';
 
 export class BotService {
   /**
@@ -53,6 +56,65 @@ export class BotService {
   }
 
   /**
+   * Send an image attachment (local file or remote URL) to Facebook Messenger
+   */
+  async sendImage(recipientId: string, imageSource: string): Promise<void> {
+    try {
+      // 1. If it's a local file on disk, upload via multipart form-data
+      if (fs.existsSync(imageSource)) {
+        const fileBytes = await fs.promises.readFile(imageSource);
+        const ext = path.extname(imageSource).toLowerCase();
+        const mimeType = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
+        const fileName = path.basename(imageSource);
+
+        const form = new FormData();
+        form.append('recipient', JSON.stringify({ id: recipientId }));
+        form.append('message', JSON.stringify({
+          attachment: {
+            type: 'image',
+            payload: { is_reusable: true }
+          }
+        }));
+        form.append('filedata', new Blob([fileBytes], { type: mimeType }), fileName);
+
+        const uploadUrl = `${env.facebook.baseUrl}/me/messages?access_token=${env.facebook.pageAccessToken}`;
+        const res = await fetch(uploadUrl, {
+          method: 'POST',
+          body: form
+        });
+
+        if (!res.ok) {
+          const errText = await res.text();
+          logger.warn(`Failed sending local image to FB (${res.status}): ${errText}`);
+          return;
+        }
+
+        logger.info(`Successfully sent local image ${fileName} to user ${recipientId}`);
+        return;
+      }
+
+      // 2. If it's a remote URL, dispatch via Graph API URL payload
+      if (imageSource.startsWith('http')) {
+        await graphApiService.post('/me/messages', {
+          recipient: { id: recipientId },
+          message: {
+            attachment: {
+              type: 'image',
+              payload: {
+                url: imageSource,
+                is_reusable: true
+              }
+            }
+          }
+        });
+        logger.info(`Successfully sent image URL to user ${recipientId}`);
+      }
+    } catch (err: any) {
+      logger.error(`Error sending image to user ${recipientId}: ${err?.message}`);
+    }
+  }
+
+  /**
    * Split and send long messages exceeding Facebook's 2,000-character limit
    */
   async sendLongMessage(recipientId: string, fullText: string): Promise<void> {
@@ -87,12 +149,20 @@ export class BotService {
   }
 
   /**
-   * Automatic bot logic for incoming Messenger messages
+   * Automatic bot logic for incoming Messenger messages and image attachments
    */
-  async handleIncomingMessage(senderPsid: string, messageText?: string): Promise<void> {
-    if (!messageText) return;
+  async handleIncomingMessage(
+    senderPsid: string,
+    messageText?: string,
+    attachments?: Array<{ type: string; payload: { url?: string } }>
+  ): Promise<void> {
+    // Find image attachment if present
+    const imageUrl = attachments?.find(a => a.type === 'image' && a.payload?.url)?.payload.url;
 
-    logger.info(`Received Messenger text from ${senderPsid}: "${messageText}"`);
+    if (!messageText && !imageUrl) return;
+
+    const promptText = messageText || '';
+    logger.info(`Received Messenger input from ${senderPsid}: text="${promptText}", hasImage=${Boolean(imageUrl)}`);
 
     // Instant response indicators: mark seen & display typing bubbles immediately
     void this.markSeen(senderPsid);
@@ -104,23 +174,44 @@ export class BotService {
     }, 4000);
 
     try {
-      // 1. Check if input matches any registered command (e.g. /help, /info, /nimji, /post)
-      const commandReply = await commandRegistry.findAndExecute(senderPsid, messageText);
-      if (commandReply) {
-        await this.sendLongMessage(senderPsid, commandReply);
-        return;
+      // 1. Check if input matches any registered command (e.g. /help, /info, /draw, /search, /post)
+      if (promptText) {
+        const commandReply = await commandRegistry.findAndExecute(senderPsid, promptText);
+        if (commandReply) {
+          if (typeof commandReply === 'string') {
+            await this.sendLongMessage(senderPsid, commandReply);
+          } else {
+            if (commandReply.text) {
+              await this.sendLongMessage(senderPsid, commandReply.text);
+            }
+            if (commandReply.images && commandReply.images.length > 0) {
+              for (const img of commandReply.images) {
+                await this.sendImage(senderPsid, img);
+              }
+            }
+          }
+          return;
+        }
       }
 
-      // 2. If no command matched, automatically route through Nimji AI if configured
+      // 2. If no command matched, automatically route through Nimji AI (with image support)
       if (nimjiService.isConfigured()) {
-        logger.info(`Routing freeform message from ${senderPsid} to Nimji AI`);
-        const aiReply = await nimjiService.ask(senderPsid, messageText);
-        await this.sendLongMessage(senderPsid, aiReply);
+        logger.info(`Routing message from ${senderPsid} to Nimji AI (hasImage: ${Boolean(imageUrl)})`);
+        const aiReply = await nimjiService.ask(senderPsid, promptText, imageUrl);
+
+        if (aiReply.text) {
+          await this.sendLongMessage(senderPsid, aiReply.text);
+        }
+        if (aiReply.images && aiReply.images.length > 0) {
+          for (const img of aiReply.images) {
+            await this.sendImage(senderPsid, img);
+          }
+        }
         return;
       }
 
       // 3. Fallback response if AI is not configured
-      const defaultReply = `Hello! Thanks for reaching out to Lumina.\n\nType "help" to view available commands or chat with our AI assistant Nimji by asking any question!`;
+      const defaultReply = `Hello! Thanks for reaching out to Lumina.\n\nType "help" to view available commands or chat with our AI assistant Nimji anytime!`;
       await this.sendMessage(senderPsid, defaultReply);
     } finally {
       clearInterval(typingTimer);
