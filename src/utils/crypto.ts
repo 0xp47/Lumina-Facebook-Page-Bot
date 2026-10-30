@@ -25,8 +25,13 @@ export function verifySignature(
     .update(rawBody)
     .digest('hex');
 
-  return crypto.timingSafeEqual(
-    Buffer.from(signature, 'utf8'),
-    Buffer.from(expectedSignature, 'utf8')
-  );
+  const sigBuffer = Buffer.from(signature, 'utf8');
+  const expectedBuffer = Buffer.from(expectedSignature, 'utf8');
+
+  // crypto.timingSafeEqual throws RangeError if buffer lengths differ
+  if (sigBuffer.length !== expectedBuffer.length) {
+    return false;
+  }
+
+  return crypto.timingSafeEqual(sigBuffer, expectedBuffer);
 }

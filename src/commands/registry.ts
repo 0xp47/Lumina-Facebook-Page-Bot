@@ -2,6 +2,8 @@ import { BotCommand } from './command.interface';
 import { helpCommand } from './help';
 import { infoCommand } from './info';
 import { hoursCommand } from './hours';
+import { supportCommand } from './support';
+import { postCommand } from './post';
 import { logger } from '../utils/logger';
 
 export class CommandRegistry {
@@ -12,6 +14,8 @@ export class CommandRegistry {
     this.register(helpCommand);
     this.register(infoCommand);
     this.register(hoursCommand);
+    this.register(supportCommand);
+    this.register(postCommand);
   }
 
   /**

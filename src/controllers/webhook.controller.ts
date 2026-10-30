@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { webhookService } from '../services/webhook.service';
+import { logger } from '../utils/logger';
 
 export class WebhookController {
   /**
@@ -21,11 +22,17 @@ export class WebhookController {
    */
   async handleWebhookEvent(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      // Must respond with 200 OK immediately so Meta doesn't retry
+      // Respond with 200 OK immediately so Meta doesn't retry
       res.status(200).send('EVENT_RECEIVED');
+    } catch (error) {
+      return next(error);
+    }
+
+    // Process event asynchronously after response is closed
+    try {
       await webhookService.processWebhookEvent(req.body);
     } catch (error) {
-      next(error);
+      logger.error('Error processing webhook event in background', error);
     }
   }
 }

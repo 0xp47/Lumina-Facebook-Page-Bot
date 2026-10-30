@@ -5,6 +5,7 @@ const router = Router();
 
 // Page Information & Details
 router.get('/info', pageController.getPageDetails.bind(pageController));
+router.get('/settings', pageController.getPageSettings.bind(pageController));
 
 // Publishing & Feeds
 router.post('/posts', pageController.publishPost.bind(pageController));

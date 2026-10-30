@@ -68,11 +68,13 @@ export class PageService {
   }
 
   /**
-   * GET /{page-id}/insights?metric=page_impressions,page_fans,page_post_engagements
+   * GET /{page-id}/insights?metric=page_views_total,page_follows,page_post_engagements
    * Retrieve analytics and metrics for a Page.
+   * NOTE: Meta renamed Page metrics - "page_impressions" -> "page_views_total"
+   * and "page_fans" -> "page_follows". The old names now return error #100.
    */
   async getPageInsights(
-    metrics: string[] = ['page_impressions', 'page_fans', 'page_post_engagements'],
+    metrics: string[] = ['page_views_total', 'page_follows', 'page_post_engagements'],
     customPageId?: string
   ): Promise<InsightsListResponse> {
     const targetPageId = customPageId || this.pageId;

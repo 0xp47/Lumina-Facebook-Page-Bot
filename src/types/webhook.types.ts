@@ -15,6 +15,7 @@ export interface WebhookMessagingEvent {
   message?: {
     mid: string;
     text?: string;
+    is_echo?: boolean;
     attachments?: Array<{
       type: string;
       payload: {

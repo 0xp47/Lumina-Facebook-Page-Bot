@@ -41,7 +41,8 @@ export class WebhookService {
       if (entry.messaging && Array.isArray(entry.messaging)) {
         for (const messagingEvent of entry.messaging) {
           const senderPsid = messagingEvent.sender.id;
-          if (messagingEvent.message) {
+          // Ignore echo messages sent by the Page to prevent infinite reply loops
+          if (messagingEvent.message && !messagingEvent.message.is_echo) {
             await botService.handleIncomingMessage(senderPsid, messagingEvent.message.text);
           }
         }
@@ -52,7 +53,12 @@ export class WebhookService {
         for (const change of entry.changes) {
           if (change.field === 'feed') {
             const feedValue = change.value;
-            if (feedValue.item === 'comment' && feedValue.verb === 'add') {
+            // Ignore comments made by the Page itself to prevent self-reply loops
+            if (
+              feedValue.item === 'comment' &&
+              feedValue.verb === 'add' &&
+              feedValue.sender_id !== env.facebook.pageId
+            ) {
               await botService.handleIncomingComment(
                 feedValue.comment_id,
                 feedValue.sender_id,

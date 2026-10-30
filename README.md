@@ -9,10 +9,10 @@ A production-ready, modular Node.js + Express + TypeScript service built accordi
 - **Page Info & Settings**: Retrieve Page details, cover photos, follower counts, and settings.
 - **Feed Posting**: Publish posts, link updates, media, and scheduled posts to Page feeds.
 - **Comment Management**: Read, reply to, and delete comments on Page posts.
-- **Analytics & Insights**: Fetch metrics like `page_impressions`, `page_fans`, and post engagements.
+- **Analytics & Insights**: Fetch metrics like `page_views_total`, `page_follows`, and post engagements.
 - **Mentions & Tagged Content**: Track posts tagging or mentioning your Page.
 - **Meta Webhooks**: Handle GET challenge verification and HMAC SHA-256 (`x-hub-signature-256`) payload validation for real-time `feed` and `messages` updates.
-- **Automated Bot Service**: Automatic replies to incoming Messenger messages and Page comments.
+- **Automated Bot Service**: Automatic replies to incoming Messenger messages and Page comments with extensible command registry.
 
 ---
 
@@ -50,7 +50,7 @@ Follow these official steps to register as a developer, obtain tokens, and confi
 
 > **Note (Token Longevity):** Short-lived tokens generated in Explorer expire in 1-2 hours. To generate a long-lived Page token, exchange it via:
 > ```bash
-> GET https://graph.facebook.com/v21.0/oauth/access_token?grant_type=fb_exchange_token&client_id={APP_ID}&client_secret={APP_SECRET}&fb_exchange_token={SHORT_LIVED_TOKEN}
+> GET https://graph.facebook.com/v26.0/oauth/access_token?grant_type=fb_exchange_token&client_id={APP_ID}&client_secret={APP_SECRET}&fb_exchange_token={SHORT_LIVED_TOKEN}
 > ```
 
 ### Step 5: Configure Webhooks
@@ -69,11 +69,14 @@ Copy `.env.example` to `.env` and fill in your credentials:
 PORT=3000
 NODE_ENV=development
 
-FACEBOOK_GRAPH_VERSION=v21.0
+FACEBOOK_GRAPH_VERSION=v26.0
 FACEBOOK_PAGE_ACCESS_TOKEN=your_page_access_token
 FACEBOOK_APP_SECRET=your_facebook_app_secret
 FACEBOOK_VERIFY_TOKEN=your_custom_webhook_verify_token
 FACEBOOK_PAGE_ID=your_page_id
+
+# Optional: Admin PSIDs allowed to execute /post in Messenger
+FACEBOOK_ADMIN_PSIDS=
 ```
 
 ---
@@ -111,11 +114,12 @@ npm start
 
 ### 2. Page Operations (`/api/page`)
 - `GET /api/page/info` - Get basic information about the Page.
+- `GET /api/page/settings` - Retrieve Page cover, about, and description settings.
 - `POST /api/page/posts` - Create post on feed (`{ "message": "Hello World!" }`).
 - `GET /api/page/posts/:objectId/comments` - Retrieve comments on a post.
 - `POST /api/page/posts/:objectId/comments` - Add a comment to a post (`{ "message": "Nice post!" }`).
 - `DELETE /api/page/comments/:commentId` - Delete/moderate a comment.
-- `GET /api/page/insights` - Retrieve Page analytics (`page_impressions`, `page_fans`).
+- `GET /api/page/insights` - Retrieve Page analytics (`page_views_total`, `page_follows`, `page_post_engagements`).
 - `GET /api/page/tagged` - Retrieve posts mentioning/tagging the Page.
 
 ### 3. Bot Operations (`/api/bot`)

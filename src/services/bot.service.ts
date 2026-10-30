@@ -2,7 +2,6 @@ import { graphApiService } from './graphApi.service';
 import { SendMessagePayload, SendMessageResponse } from '../types/facebook.types';
 import { pageService } from './page.service';
 import { logger } from '../utils/logger';
-
 import { commandRegistry } from '../commands/registry';
 
 export class BotService {
@@ -50,9 +49,9 @@ export class BotService {
     logger.info(`Received comment ${commentId} from ${senderId}: "${messageText}"`);
 
     const lower = messageText.toLowerCase();
-    if (lower.includes('price') || lower.includes('cost') || lower.includes('buy')) {
+    if (lower.includes('info') || lower.includes('question') || lower.includes('help')) {
       await pageService.postComment(commentId, {
-        message: 'Thanks for reaching out! Please send us a direct message for pricing details.'
+        message: 'Thanks for reaching out! Please send us a direct message if you have any questions or need assistance.'
       });
     }
   }

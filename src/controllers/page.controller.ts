@@ -12,6 +12,16 @@ export class PageController {
     }
   }
 
+  async getPageSettings(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const pageId = req.query.pageId as string;
+      const settings = await pageService.getPageSettings(pageId);
+      res.json({ success: true, data: settings });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async publishPost(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const { message, link, picture, published, scheduled_publish_time } = req.body;
