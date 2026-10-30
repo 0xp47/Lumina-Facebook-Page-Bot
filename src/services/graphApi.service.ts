@@ -1,7 +1,17 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import https from 'https';
 import { env } from '../config/env.config';
 import { logger } from '../utils/logger';
 import { AppError } from '../middlewares/errorHandler.middleware';
+
+// High-performance reusable HTTPS agent with keep-alive socket pooling
+const httpsAgent = new https.Agent({
+  keepAlive: true,
+  maxSockets: 50,
+  maxFreeSockets: 10,
+  timeout: 15000,
+  keepAliveMsecs: 60000
+});
 
 export class GraphApiService {
   private client: AxiosInstance;
@@ -10,6 +20,7 @@ export class GraphApiService {
     this.client = axios.create({
       baseURL: env.facebook.baseUrl,
       timeout: 10000,
+      httpsAgent,
       headers: {
         'Content-Type': 'application/json'
       }

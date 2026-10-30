@@ -13,19 +13,30 @@ import {
 import { logger } from '../utils/logger';
 
 export class PageService {
+  private pageDetailsCache = new Map<string, { data: PageInfo; expiresAt: number }>();
+  private readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5-minute cache to eliminate redundant Graph API network hops
+
   private get pageId(): string {
     return env.facebook.pageId;
   }
 
   /**
    * GET /<PAGE_ID>?fields=id,name,about,fan_count,followers_count,link,category,cover
-   * Retrieve basic information about a Page.
+   * Retrieve basic information about a Page (cached for 5 minutes).
    */
   async getPageDetails(customPageId?: string): Promise<PageInfo> {
     const targetPageId = customPageId || this.pageId;
+    const cached = this.pageDetailsCache.get(targetPageId);
+    if (cached && Date.now() < cached.expiresAt) {
+      logger.debug(`Serving Page details from in-memory cache for ${targetPageId}`);
+      return cached.data;
+    }
+
     const fields = 'id,name,about,description,fan_count,followers_count,link,category,cover';
     logger.info(`Fetching details for Page ID: ${targetPageId}`);
-    return graphApiService.get<PageInfo>(`/${targetPageId}`, { fields });
+    const data = await graphApiService.get<PageInfo>(`/${targetPageId}`, { fields });
+    this.pageDetailsCache.set(targetPageId, { data, expiresAt: Date.now() + this.CACHE_TTL_MS });
+    return data;
   }
 
   /**

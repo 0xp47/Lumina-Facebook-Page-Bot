@@ -7,6 +7,22 @@ import { commandRegistry } from '../commands/registry';
 
 export class BotService {
   /**
+   * Send Messenger typing indicator ("typing_on") to give instant visual feedback
+   * POST /me/messages { recipient: { id }, sender_action: 'typing_on' }
+   */
+  async sendTypingIndicator(recipientId: string): Promise<void> {
+    try {
+      await graphApiService.post('/me/messages', {
+        recipient: { id: recipientId },
+        sender_action: 'typing_on'
+      });
+    } catch (err: any) {
+      // Non-blocking: fail quietly if typing indicator cannot be delivered
+      logger.debug(`Typing indicator skipped for ${recipientId}: ${err?.message}`);
+    }
+  }
+
+  /**
    * Send a direct Messenger message on behalf of the Facebook Page
    * POST /me/messages
    */
@@ -62,6 +78,9 @@ export class BotService {
     if (!messageText) return;
 
     logger.info(`Received Messenger text from ${senderPsid}: "${messageText}"`);
+
+    // Instant feedback: trigger typing bubbles in Messenger immediately
+    void this.sendTypingIndicator(senderPsid);
 
     // 1. Check if input matches any registered command (e.g. /help, /info, /nimji, /post)
     const commandReply = await commandRegistry.findAndExecute(senderPsid, messageText);
