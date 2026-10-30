@@ -6,13 +6,30 @@ A production-ready, modular Node.js + Express + TypeScript service built accordi
 
 ## Features
 
+- **Nimji AI Assistant**: Built-in intelligent conversational assistant powered by Google Gemini web scraper with rolling multi-turn memory.
 - **Page Info & Settings**: Retrieve Page details, cover photos, follower counts, and settings.
 - **Feed Posting**: Publish posts, link updates, media, and scheduled posts to Page feeds.
 - **Comment Management**: Read, reply to, and delete comments on Page posts.
 - **Analytics & Insights**: Fetch metrics like `page_views_total`, `page_follows`, and post engagements.
 - **Mentions & Tagged Content**: Track posts tagging or mentioning your Page.
 - **Meta Webhooks**: Handle GET challenge verification and HMAC SHA-256 (`x-hub-signature-256`) payload validation for real-time `feed` and `messages` updates.
-- **Automated Bot Service**: Automatic replies to incoming Messenger messages and Page comments with extensible command registry.
+- **Automated Bot Service**: Automatic replies to incoming Messenger messages, persistent menu postbacks, and Page comments with an extensible command registry.
+
+---
+
+## 🤖 Bot Commands in Messenger
+
+Users chatting with your Facebook Page can use the following commands:
+
+- **`nimji <question>`** *(or `/ai <question>`)* — Ask Nimji, the intelligent AI assistant powered by Google Gemini.
+- **`nimji reset`** — Clears rolling conversation memory.
+- **`help`** — Shows available bot commands.
+- **`info`** — Shows live Facebook Page details (followers, category, about).
+- **`hours`** — Shows operational hours.
+- **`support`** — Provides customer support contact information.
+- **`post <text>`** — *(Admin only)* Publishes a post to the Page feed directly from Messenger.
+
+> **Smart AI Fallback:** Any freeform question or message sent to the Page that does not match an administrative command is automatically answered by Nimji AI!
 
 ---
 
@@ -77,6 +94,12 @@ FACEBOOK_PAGE_ID=your_page_id
 
 # Optional: Admin PSIDs allowed to execute /post in Messenger
 FACEBOOK_ADMIN_PSIDS=
+
+# Nimji AI (Google Gemini Web Chat Scraper)
+COOKIES=your_gemini_browser_cookies_here
+AT_TOKEN=your_at_token_here
+F_SID=your_f_sid_here
+BL_PARAM=boq_gemini-web-uiserver_20261014.09_p0
 ```
 
 ---
@@ -124,6 +147,10 @@ Set the following under **Environment** in your Render service dashboard:
 - `FACEBOOK_VERIFY_TOKEN`: *(Your custom webhook verify token)*
 - `FACEBOOK_PAGE_ID`: *(Your Page ID)*
 - `FACEBOOK_ADMIN_PSIDS`: *(Optional comma-separated admin PSIDs)*
+- `COOKIES`: *(Your Gemini browser cookies)*
+- `AT_TOKEN`: *(Your Gemini AT token)*
+- `F_SID`: *(Your Gemini F.SID)*
+- `BL_PARAM`: `boq_gemini-web-uiserver_20261014.09_p0`
 
 ---
 

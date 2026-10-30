@@ -21,3 +21,11 @@ services:
         sync: false
       - key: FACEBOOK_ADMIN_PSIDS
         sync: false
+      - key: COOKIES
+        sync: false
+      - key: AT_TOKEN
+        sync: false
+      - key: F_SID
+        sync: false
+      - key: BL_PARAM
+        value: boq_gemini-web-uiserver_20261014.09_p0

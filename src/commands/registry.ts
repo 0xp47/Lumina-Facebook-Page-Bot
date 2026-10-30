@@ -4,6 +4,7 @@ import { infoCommand } from './info';
 import { hoursCommand } from './hours';
 import { supportCommand } from './support';
 import { postCommand } from './post';
+import { nimjiCommand } from './nimji';
 import { logger } from '../utils/logger';
 
 export class CommandRegistry {
@@ -16,6 +17,7 @@ export class CommandRegistry {
     this.register(hoursCommand);
     this.register(supportCommand);
     this.register(postCommand);
+    this.register(nimjiCommand);
   }
 
   /**

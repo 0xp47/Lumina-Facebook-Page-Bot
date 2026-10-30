@@ -8,6 +8,7 @@ export const helpCommand: BotCommand = {
     return (
       '🤖 **Available Bot Commands**:\n' +
       '• `help` - Show available bot commands\n' +
+      '• `nimji <question>` - Ask our AI assistant powered by Gemini (alias: `ai`)\n' +
       '• `info` - Show Facebook Page information\n' +
       '• `hours` - Show operational hours\n' +
       '• `support` - Get customer support contact\n' +

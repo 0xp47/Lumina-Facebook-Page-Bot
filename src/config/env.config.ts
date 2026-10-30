@@ -16,6 +16,12 @@ export interface AppConfig {
   };
   /** Comma-separated Messenger PSIDs allowed to run publisher commands (e.g. /post). */
   adminPsids: string[];
+  nimji: {
+    cookies: string;
+    atToken: string;
+    fSid: string;
+    blParam: string;
+  };
 }
 
 export const env: AppConfig = {
@@ -32,5 +38,11 @@ export const env: AppConfig = {
   adminPsids: (process.env.FACEBOOK_ADMIN_PSIDS || '')
     .split(',')
     .map(id => id.trim())
-    .filter(Boolean)
+    .filter(Boolean),
+  nimji: {
+    cookies: process.env.COOKIES || '',
+    atToken: process.env.AT_TOKEN || '',
+    fSid: process.env.F_SID || '',
+    blParam: process.env.BL_PARAM || 'boq_assistant-bard-web-server_20260427.06_p7'
+  }
 };

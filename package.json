@@ -29,7 +29,9 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "typescript": "^5.7.2"
+    "strip-json-comments": "^5.0.3",
+    "typescript": "^5.7.2",
+    "undici": "^8.12.3"
   },
   "devDependencies": {
     "ts-node-dev": "^2.0.0"

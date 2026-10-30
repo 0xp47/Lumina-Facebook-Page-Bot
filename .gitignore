@@ -8,6 +8,9 @@ dist/
 .env
 .env.local
 
+# Root reference folder
+/nimji/
+
 # Scratch and test files
 scratch/
 
