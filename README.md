@@ -55,8 +55,8 @@ Follow these official steps to register as a developer, obtain tokens, and confi
 
 ### Step 5: Configure Webhooks
 1. In your App Dashboard, select **Webhooks** > **Page**.
-2. Set Callback URL to your public URL (e.g. via ngrok: `https://your-ngrok-domain.ngrok-free.app/webhook`).
-3. Set Verify Token to match `FACEBOOK_VERIFY_TOKEN` in your `.env`.
+2. Set Callback URL to your public URL (e.g. `https://your-service.onrender.com/webhook`).
+3. Set Verify Token to match `FACEBOOK_VERIFY_TOKEN` in your `.env` / Render environment.
 4. Subscribe to `feed` and `messages` fields.
 
 ---
@@ -81,7 +81,7 @@ FACEBOOK_ADMIN_PSIDS=
 
 ---
 
-## 🏃 Running the Service
+## 🏃 Running Locally
 
 ### Install Dependencies
 ```bash
@@ -103,6 +103,27 @@ npm run dev
 npm run build
 npm start
 ```
+
+---
+
+## ☁️ Deploying to Render
+
+This repository includes a `render.yaml` Blueprint file for automatic configuration on [Render](https://render.com).
+
+### Render Web Service Settings:
+- **Build Command**: `npm install && npm run build`
+- **Start Command**: `npm start`
+- **Health Check Path**: `/health`
+
+### Environment Variables on Render:
+Set the following under **Environment** in your Render service dashboard:
+- `NODE_ENV`: `production`
+- `FACEBOOK_GRAPH_VERSION`: `v26.0`
+- `FACEBOOK_PAGE_ACCESS_TOKEN`: *(Your Page Access Token)*
+- `FACEBOOK_APP_SECRET`: *(Your Meta App Secret)*
+- `FACEBOOK_VERIFY_TOKEN`: *(Your custom webhook verify token)*
+- `FACEBOOK_PAGE_ID`: *(Your Page ID)*
+- `FACEBOOK_ADMIN_PSIDS`: *(Optional comma-separated admin PSIDs)*
 
 ---
 
