@@ -41,9 +41,17 @@ export class WebhookService {
       if (entry.messaging && Array.isArray(entry.messaging)) {
         for (const messagingEvent of entry.messaging) {
           const senderPsid = messagingEvent.sender.id;
+
           // Ignore echo messages sent by the Page to prevent infinite reply loops
           if (messagingEvent.message && !messagingEvent.message.is_echo) {
             await botService.handleIncomingMessage(senderPsid, messagingEvent.message.text);
+          }
+
+          // Handle postback events (e.g. Get Started button or Persistent Menu taps)
+          if (messagingEvent.postback) {
+            const payload = messagingEvent.postback.payload || messagingEvent.postback.title;
+            const textToProcess = payload === 'GET_STARTED' ? 'help' : payload;
+            await botService.handleIncomingMessage(senderPsid, textToProcess);
           }
         }
       }
