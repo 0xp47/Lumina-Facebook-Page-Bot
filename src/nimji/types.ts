@@ -100,6 +100,10 @@ export type GenerateOptions = {
   readonly imageAttachment?: ImageAttachment;
   /** Optional callback fired incrementally whenever new text tokens arrive. */
   readonly onToken?: (token: string) => void | Promise<void>;
+  /** If true, do not reuse or inherit any previous conversation state. */
+  readonly freshConversation?: boolean;
+  /** Explicit conversation state to use for this call (overrides client state). */
+  readonly conversation?: ConversationState;
 };
 
 /** HTTP/stream stats copied from the raw Gemini response. */

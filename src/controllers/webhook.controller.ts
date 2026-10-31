@@ -20,20 +20,18 @@ export class WebhookController {
    * POST /webhook
    * Handles incoming Facebook event notifications
    */
-  async handleWebhookEvent(req: Request, res: Response, next: NextFunction): Promise<void> {
-    try {
-      // Respond with 200 OK immediately so Meta doesn't retry
-      res.status(200).send('EVENT_RECEIVED');
-    } catch (error) {
-      return next(error);
-    }
+  handleWebhookEvent(req: Request, res: Response, next: NextFunction): void {
+    // 1. Instantly return 200 OK to Meta so it never triggers retry attempts
+    res.status(200).send('EVENT_RECEIVED');
 
-    // Process event asynchronously after response is closed
-    try {
-      await webhookService.processWebhookEvent(req.body);
-    } catch (error) {
-      logger.error('Error processing webhook event in background', error);
-    }
+    // 2. Offload event handling to background so HTTP socket is immediately closed
+    setImmediate(async () => {
+      try {
+        await webhookService.processWebhookEvent(req.body);
+      } catch (error) {
+        logger.error('Error processing webhook event in background', error);
+      }
+    });
   }
 }
 

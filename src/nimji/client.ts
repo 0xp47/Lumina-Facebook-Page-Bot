@@ -98,11 +98,15 @@ export function createClient(
       ? cfg.runtime.imageStreamMaxDurationMs
       : cfg.runtime.streamMaxDurationMs;
 
+    const activeConversation: ConversationState = options.freshConversation
+      ? {}
+      : options.conversation ?? conversation;
+
     const requestPath = buildStreamGeneratePath(requestConfig);
     const requestBody = buildPayload(
       requestConfig,
       options.prompt,
-      conversation,
+      activeConversation,
       options.imageAttachment,
     );
     await hooks?.onRequest?.({ prompt: options.prompt, path: requestPath, body: requestBody });
@@ -162,7 +166,7 @@ export function createClient(
           ? sortStableGoogleImageUrls(await upgradeGgDlUrlsFromRedirects(requestConfig, extracted.imageUrls))
           : [];
 
-      if (extracted.conversation.conversationId) {
+      if (!options.freshConversation && extracted.conversation.conversationId) {
         conversation = {
           conversationId: extracted.conversation.conversationId,
           responseId: extracted.conversation.responseId,

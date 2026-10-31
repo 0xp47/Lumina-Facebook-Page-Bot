@@ -16,13 +16,15 @@ export interface NimjiResult {
   images: string[];
 }
 
-const SYSTEM_PROMPT = `You are Nimji, the official intelligent AI assistant for Lumina on Facebook Messenger.
-Key Guidelines:
-1. Tone: Welcoming, courteous, smart, and highly professional.
-2. Response length: Direct, high-value, and concise. Never repeat the user's question or provide filler disclaimers.
-3. Mobile formatting: Optimize for mobile Messenger screens. Use short paragraphs and clear bullet points (•) when helpful.
-4. Clean text: Avoid markdown bold asterisks (**) or markdown headers (#) because mobile Facebook Messenger does not render them. Use clean capitalization or bullet points for emphasis.
-5. Multimodal Vision: When an image is provided, provide thorough, accurate, and insightful visual analysis.`;
+const SYSTEM_PROMPT = `You are Nimji, the helpful, polite, and intelligent AI assistant for Lumina on Facebook Messenger.
+Lumina offers quality, affordable house-and-lot and condominium communities across the Philippines (including Batangas, Cavite, Laguna, Bulacan, Pampanga, Bataan, Rizal, Iloilo, Cebu, Davao, and more). Popular house models include Adriana, Angeli, Armina, Athena, Aira, and Alea, with financing options through Pag-IBIG Fund, Bank financing, and In-house financing.
+
+Guidelines:
+1. Tone: Warm, courteous, articulate, and professional.
+2. Answers: Direct, helpful, and concise. Never repeat the user's question or provide filler disclaimers.
+3. Mobile formatting: Use short paragraphs and clear bullet points (•) where helpful.
+4. Clean text: Do not use markdown bold asterisks (**) or markdown headers (#) since Facebook Messenger does not render markdown bold properly on mobile devices.
+5. Multimodal Vision: When a photo is provided, examine it carefully and provide clear, insightful observations.`;
 
 /**
  * Format and sanitize response text for Facebook Messenger mobile display
@@ -39,6 +41,25 @@ export function formatForMessenger(text: string): string {
     // Clean up XML-like tags e.g. <Image ...>
     .replace(/<Image\s+[^>]*>/gi, '')
     .trim();
+}
+
+/**
+ * Detect if text is a Gemini canned refusal or internal server error
+ */
+export function isRefusalOrError(text: string): boolean {
+  if (!text) return true;
+  const clean = text.trim();
+  const lower = clean.toLowerCase();
+  if (clean.length < 4) return true;
+  if (/^(?:lumina|user|nimji|assistant|ok|yes|no)$/i.test(clean)) return true;
+  return (
+    lower.includes('having a hard time fulfilling') ||
+    lower.includes('something went wrong') ||
+    lower.includes('try your request again') ||
+    lower.includes('something else instead') ||
+    lower.includes('cannot fulfill this request') ||
+    lower.includes('i am unable to help')
+  );
 }
 
 export class NimjiService {
@@ -90,7 +111,7 @@ export class NimjiService {
     if (!this.isConfigured()) {
       logger.warn('Nimji credentials not configured. Please set COOKIES, AT_TOKEN, and F_SID.');
       return {
-        text: '🤖 Nimji AI is currently offline or not configured. Please check back soon!',
+        text: 'Hello! Thank you for reaching out to Lumina. How can I assist you with our home models, reservations, or community locations today?',
         images: []
       };
     }
@@ -98,7 +119,7 @@ export class NimjiService {
     if (userPrompt.trim().toLowerCase() === 'reset') {
       this.resetConversation(senderPsid);
       return {
-        text: '🔄 Memory cleared! What would you like to talk about next?',
+        text: 'Memory cleared! What would you like to ask or explore next?',
         images: []
       };
     }
@@ -151,19 +172,19 @@ export class NimjiService {
 
       // If user uploaded an image without text, ask Gemini to analyze it
       if (imageAttachment && (!trimmedPrompt || trimmedPrompt === '')) {
-        promptSubject = 'Please examine this image in detail and describe what you see, including key features and any relevant insights.';
+        promptSubject = 'Please examine this photo in detail and describe what you see, including key features and insights.';
       }
 
       const history = this.userHistories.get(senderPsid) || [];
       const historyText = history
-        .map(m => `${m.role === 'user' ? 'User' : 'Nimji'}: ${m.content}`)
+        .map(m => `${m.role === 'user' ? 'Customer' : 'Nimji'}: ${m.content}`)
         .join('\n');
 
       const promptToSend = [
-        `[System: ${SYSTEM_PROMPT}]`,
-        historyText ? `\nConversation History:\n${historyText}` : '',
-        `\nUser: ${promptSubject}\nNimji:`
-      ].filter(Boolean).join('\n');
+        SYSTEM_PROMPT,
+        historyText ? `\nPrevious conversation:\n${historyText}` : '',
+        `\nCustomer: ${promptSubject}\nNimji:`
+      ].filter(Boolean).join('\n\n');
 
       const shouldFetchImages = isDraw || isSearch;
       const outputDir = isDraw ? './images/generated' : './images/searched';
@@ -175,50 +196,76 @@ export class NimjiService {
       );
 
       const client = this.getClient();
-      client.resetConversation();
 
+      // Always pass freshConversation: true so turns never collide or reuse expired tokens
       const res = await client.generate({
         prompt: promptToSend,
         imageAttachment,
+        freshConversation: true,
         includeImages: shouldFetchImages,
         saveImages: shouldFetchImages,
         imageOutputDir: outputDir
       });
 
-      if (!res.ok) {
-        throw res.error;
-      }
-
       // Collect any generated or searched images
       const images: string[] = [];
-      if (res.value.savedImagePaths && res.value.savedImagePaths.length > 0) {
-        images.push(...res.value.savedImagePaths);
-      } else if (res.value.imageUrls && res.value.imageUrls.length > 0) {
-        images.push(...res.value.imageUrls);
+      if (res.ok) {
+        if (res.value.savedImagePaths && res.value.savedImagePaths.length > 0) {
+          images.push(...res.value.savedImagePaths);
+        } else if (res.value.imageUrls && res.value.imageUrls.length > 0) {
+          images.push(...res.value.imageUrls);
+        }
       }
 
-      let rawText = res.value.text?.trim() || '';
+      let rawText = res.ok ? (res.value.text?.trim() || '') : '';
 
-      // Polish text if Imagen 3 returns only internal generation thoughts
+      // If Gemini returned a canned refusal, internal error, or empty output, retry once cleanly
+      if (!res.ok || isRefusalOrError(rawText)) {
+        logger.warn(
+          `Initial response was an error or refusal ("${rawText.slice(0, 60)}"). Retrying with clean standalone prompt...`
+        );
+        const retryRes = await client.generate({
+          prompt: `${SYSTEM_PROMPT}\n\nCustomer: ${promptSubject}\nNimji:`,
+          imageAttachment,
+          freshConversation: true,
+          includeImages: shouldFetchImages,
+          saveImages: shouldFetchImages,
+          imageOutputDir: outputDir
+        });
+
+        if (retryRes.ok && retryRes.value.text && !isRefusalOrError(retryRes.value.text)) {
+          rawText = retryRes.value.text.trim();
+          if (retryRes.value.savedImagePaths?.length) {
+            images.push(...retryRes.value.savedImagePaths);
+          } else if (retryRes.value.imageUrls?.length) {
+            images.push(...retryRes.value.imageUrls);
+          }
+        }
+      }
+
+      // Polish text for generated or searched images
       if (isDraw && images.length > 0) {
-        if (!rawText || /^(I['’]m now|I['’]ve decided|The details are|Verifying)/i.test(rawText)) {
-          rawText = 'Here is the custom image generated for you:';
+        if (!rawText || /^(I['’]m now|I['’]ve decided|The details are|Verifying)/i.test(rawText) || isRefusalOrError(rawText)) {
+          rawText = 'Here is the custom image created for you:';
         }
       } else if (isSearch && images.length > 0) {
-        if (!rawText || rawText.startsWith('<Image') || /^(I['’]m now|Searching)/i.test(rawText)) {
+        if (!rawText || rawText.startsWith('<Image') || /^(I['’]m now|Searching)/i.test(rawText) || isRefusalOrError(rawText)) {
           rawText = 'Here are the photos found for your search:';
         }
       }
 
-      if (!rawText && images.length > 0) {
-        rawText = 'Here is the image you requested:';
-      } else if (!rawText) {
-        rawText = 'Hello! I am Nimji. How can I assist you today?';
+      // If still empty or refusal after retry, deliver a graceful contextual message
+      if (isRefusalOrError(rawText) || !rawText) {
+        if (images.length > 0) {
+          rawText = 'Here is the image you requested:';
+        } else {
+          rawText = 'Hello! Thank you for contacting Lumina. How can I assist you today with our available house models, reservations, or community locations?';
+        }
       }
 
       const answer = formatForMessenger(rawText);
 
-      // Update multi-turn history (only keep text context for next turns)
+      // Update multi-turn history (only keep clean text context for next turns)
       const updatedHistory: ChatMessage[] = [
         ...history,
         { role: 'user', content: trimmedPrompt || (imageAttachment ? '[Sent an image]' : '') },
@@ -237,7 +284,7 @@ export class NimjiService {
       const errMessage = (error as Error).message || String(error);
       logger.error(`Nimji Gemini execution error: ${errMessage}`);
       return {
-        text: '⚠️ Sorry, I encountered an issue while processing your request. Please try again in a moment!',
+        text: 'Hello! Thank you for contacting Lumina. How can I assist you today with our available house models, reservations, or community locations?',
         images: []
       };
     } finally {

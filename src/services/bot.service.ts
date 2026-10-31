@@ -9,6 +9,9 @@ import { commandRegistry } from '../commands/registry';
 import { env } from '../config/env.config';
 
 export class BotService {
+  /** Active locks to prevent duplicate concurrent processing per user */
+  private activeUserLocks = new Set<string>();
+
   /**
    * Mark message as seen ("mark_seen")
    * POST /me/messages { recipient: { id }, sender_action: 'mark_seen' }
@@ -161,6 +164,12 @@ export class BotService {
 
     if (!messageText && !imageUrl) return;
 
+    if (this.activeUserLocks.has(senderPsid)) {
+      logger.warn(`User ${senderPsid} already has a message in flight. Ignoring duplicate trigger.`);
+      return;
+    }
+    this.activeUserLocks.add(senderPsid);
+
     const promptText = messageText || '';
     logger.info(`Received Messenger input from ${senderPsid}: text="${promptText}", hasImage=${Boolean(imageUrl)}`);
 
@@ -214,7 +223,9 @@ export class BotService {
       const defaultReply = `Hello! Thanks for reaching out to Lumina.\n\nType "help" to view available commands or chat with our AI assistant Nimji anytime!`;
       await this.sendMessage(senderPsid, defaultReply);
     } finally {
+      this.activeUserLocks.delete(senderPsid);
       clearInterval(typingTimer);
+      void this.sendTypingIndicator(senderPsid, 'typing_off');
     }
   }
 

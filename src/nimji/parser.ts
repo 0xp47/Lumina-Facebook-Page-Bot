@@ -248,6 +248,10 @@ const NOISE_PHRASES = [
   "Shorter",
   "Try again",
   "Answer now",
+  "having a hard time fulfilling",
+  "something went wrong",
+  "try your request again",
+  "something else instead",
 ] as const;
 
 function looksLikeImageGenerationProcessTrace(t: string): boolean {
@@ -282,6 +286,11 @@ function scoreCandidate(value: string): number {
   if (/^[A-Za-z0-9_-]{16,}$/.test(t)) return -100;
   if (/^(und|en|PH)$/i.test(t)) return -100;
   if (/^creating your image/i.test(t)) return -80;
+  if (/having a hard time fulfilling/i.test(t)) return -500;
+  if (/something went wrong/i.test(t)) return -500;
+  if (/try your request again/i.test(t)) return -500;
+  if (/something else instead/i.test(t)) return -500;
+  if (/^(?:lumina|user|nimji|assistant)$/i.test(t)) return -300;
 
   let score = 0;
   if (/[a-zA-Z]/.test(t)) score += 10;
@@ -367,7 +376,7 @@ export function extractResponse(chunks: unknown[], rawStreamText?: string): Extr
       if (looksLikeStandaloneLocation(geoOneLine) || isStandaloneGeolocationNoiseBlock(trimmed)) {
         return false;
       }
-      return !NOISE_PHRASES.some((phrase) => item.value.includes(phrase));
+      return !NOISE_PHRASES.some((phrase) => item.value.toLowerCase().includes(phrase.toLowerCase()));
     })
     .sort((a, b) => b.score - a.score || b.value.length - a.value.length);
 
